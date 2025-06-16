@@ -1,16 +1,26 @@
-import LoginView from '@/pages/loginView.vue'
+import WelcomeView from '@/pages/welcomeView.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
     path: '/',
-    redirect: '/login',
+    redirect: '/welcome',
+  },
+  {
+    path: '/welcome',
+    name: 'Welcome',
+    component: WelcomeView,
   },
   {
     path: '/login',
     name: 'Login',
-    component: LoginView,
+    component: () => import('../pages/loginView.vue'),
+  },
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: () => import('../pages/signupView.vue'),
   },
   {
     path: '/dashboard',

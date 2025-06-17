@@ -88,7 +88,25 @@
       </div>
     </section>
 
-    <!-- Adicionar aqui depois: Lista de despesas e gráficos -->
+    <!-- Lista de despesas e gráficos -->
+    <section class="mt-10">
+      <ExpensesPieChart :expenses="expenses" />
+    </section>
+    <section class="mt-10">
+      <ExpensesBarChart :expenses="expenses" />
+    </section>
+    <section class="mt-10">
+      <ExpensesByCategory :data="expensesByCategory" />
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold mb-2">Resumo Mensal</h2>
+      <BarChart
+        :labels="barChartLabels"
+        :values="barChartValues"
+        title="Resumo de {{ month }}/{{ year }}"
+      />
+    </section>
   </main>
 
   <ExpenseModal
@@ -104,6 +122,12 @@ import { ref, onMounted } from 'vue'
 import { getExpenses, getMonthlySummary } from '../services/authService'
 import { useAuthStore } from '@/stores/authStore'
 import { deleteExpense } from '../services/authService'
+import { getExpensesByCategory } from '@/services/dashboardService'
+
+import ExpensesPieChart from '@/components/ExpensesPieChart.vue'
+import ExpensesBarChart from '@/components/ExpensesBarChart.vue'
+import ExpensesByCategory from '@/components/ExpensesByCategory.vue'
+import BarChart from '@/components/charts/BarChart.vue'
 
 const auth = useAuthStore()
 interface Summary {
@@ -133,6 +157,19 @@ const years = Array.from({ length: 5 }, (_, i) => 2023 + i)
 const showModal = ref(false)
 const selectedExpense = ref<Expense | null>(null)
 
+const authStore = useAuthStore()
+const expensesByCategory = ref<{ categoria: string; total: number }[]>([])
+
+const barChartLabels = ref<string[]>([
+  'Despesas',
+  'Pagas',
+  'Pendentes',
+  'Vencidas',
+  'Receitas',
+  'Saldo',
+])
+const barChartValues = ref<number[]>([])
+
 function handleEdit(expense: Expense) {
   selectedExpense.value = expense
   showModal.value = true
@@ -146,8 +183,20 @@ function handleUpdate(updated: Expense) {
 
 async function loadData() {
   if (!auth.user) return
+
   summary.value = await getMonthlySummary(auth.user.id, month.value, year.value)
   expenses.value = await getExpenses(auth.user.id, month.value, year.value)
+
+  if (summary.value) {
+    barChartValues.value = [
+      summary.value.total_despesas,
+      summary.value.total_pagas,
+      summary.value.pendentes,
+      summary.value.total_vencidas,
+      summary.value.receitas,
+      summary.value.saldo,
+    ]
+  }
 }
 
 async function handleDelete(expenseId: string) {
@@ -158,4 +207,16 @@ async function handleDelete(expenseId: string) {
 }
 
 onMounted(loadData)
+
+onMounted(async () => {
+  const userId = authStore.user?.id
+  if (!userId) return
+
+  try {
+    const data = await getExpensesByCategory(userId, 5, 2025)
+    expensesByCategory.value = data
+  } catch (error) {
+    console.error('Erro ao carregar despesas por categoria:', error)
+  }
+})
 </script>

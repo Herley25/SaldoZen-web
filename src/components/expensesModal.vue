@@ -76,10 +76,17 @@ interface Expense {
   paga: boolean
 }
 
-const props = defineProps<{
-  visible: boolean
-  expense: Expense
-}>()
+const props = withDefaults(
+  defineProps<{
+    visible: boolean
+    expense: Expense | null
+    onClose: () => void
+    onUpdate: (expense: Expense) => void
+  }>(),
+  {
+    expense: null,
+  },
+)
 
 const emit = defineEmits(['close', 'update'])
 

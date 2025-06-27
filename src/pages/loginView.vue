@@ -6,7 +6,7 @@
       <h2 class="text-2xl font-semibold text-center text-purple-700 mb-4">Login</h2>
 
       <form @submit.prevent="handleLogin" class="space-y-4">
-        <div>
+        <div style="margin-bottom: 8px">
           <label class="block text-sm font-medium text-gray-700">Email</label>
           <input
             v-model="email"
@@ -33,6 +33,7 @@
         <button
           type="submit"
           class="w-full bg-purple-700 text-white py-2 rounded-md hover:bg-purple-800 transition"
+          style="margin-top: 18px"
         >
           Entrar
         </button>

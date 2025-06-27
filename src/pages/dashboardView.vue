@@ -51,11 +51,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="expense in expenses"
-              :key="expense.user_id"
-              class="border-b hover:bg-purple-50"
-            >
+            <tr v-for="expense in expenses" :key="expense.id" class="border-b hover:bg-purple-50">
               <td class="px-6 py-4">{{ expense.descricao }}</td>
               <td class="px-6 py-4">R$ {{ expense.valor.toFixed(2) }}</td>
               <td class="px-6 py-4">{{ expense.categoria }}</td>
@@ -73,7 +69,7 @@
                 <button class="text-blue-600 hover:underline" @click="handleEdit(expense)">
                   Editar
                 </button>
-                <button class="text-red-600 hover:underline" @click="handleDelete(expense.user_id)">
+                <button class="text-red-600 hover:underline" @click="handleDelete(expense.id)">
                   Excluir
                 </button>
               </td>
@@ -118,18 +114,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { getExpenses, getMonthlySummary } from '../services/authService'
 import { useAuthStore } from '@/stores/authStore'
 import { deleteExpense } from '../services/authService'
 import { getExpensesByCategory } from '@/services/dashboardService'
+import ExpenseModal from '../components/expensesModal.vue'
 
 import ExpensesPieChart from '@/components/ExpensesPieChart.vue'
 import ExpensesBarChart from '@/components/ExpensesBarChart.vue'
 import ExpensesByCategory from '@/components/ExpensesByCategory.vue'
 import BarChart from '@/components/charts/BarChart.vue'
+import { watch } from 'vue'
 
-const auth = useAuthStore()
 interface Summary {
   total_despesas: number
   total_pagas: number
@@ -139,6 +136,7 @@ interface Summary {
   saldo: number
 }
 interface Expense {
+  id: string
   user_id: string
   descricao: string
   valor: number
@@ -147,6 +145,8 @@ interface Expense {
   categoria: string
   observacoes: string
 }
+
+const authStore = useAuthStore()
 
 const summary = ref<Summary | null>(null)
 const expenses = ref<Expense[]>([]) // Ajuste o tipo conforme necessário
@@ -157,7 +157,6 @@ const years = Array.from({ length: 5 }, (_, i) => 2023 + i)
 const showModal = ref(false)
 const selectedExpense = ref<Expense | null>(null)
 
-const authStore = useAuthStore()
 const expensesByCategory = ref<{ categoria: string; total: number }[]>([])
 
 const barChartLabels = ref<string[]>([
@@ -176,16 +175,18 @@ function handleEdit(expense: Expense) {
 }
 
 function handleUpdate(updated: Expense) {
-  // Aqui você pode chamar o service de update
-  const index = expenses.value.findIndex((e) => e.user_id === updated.user_id)
+  const index = expenses.value.findIndex((e) => e.id === updated.id)
   if (index !== -1) expenses.value[index] = updated
 }
 
 async function loadData() {
-  if (!auth.user) return
+  if (!authStore.user) return
 
-  summary.value = await getMonthlySummary(auth.user.id, month.value, year.value)
-  expenses.value = await getExpenses(auth.user.id, month.value, year.value)
+  summary.value = await getMonthlySummary(authStore.user.id, month.value, year.value)
+  expenses.value = await getExpenses(authStore.user.id, month.value, year.value)
+  expensesByCategory.value = await getExpensesByCategory(authStore.user.id, month.value, year.value)
+
+  console.log('Despesas:', expenses.value)
 
   if (summary.value) {
     barChartValues.value = [
@@ -201,22 +202,22 @@ async function loadData() {
 
 async function handleDelete(expenseId: string) {
   if (confirm('Deseja realmente excluir esta despesa?')) {
-    await deleteExpense(auth.user!.id, expenseId)
-    expenses.value = expenses.value.filter((e) => e.user_id !== expenseId)
+    await deleteExpense(authStore.user!.id, expenseId)
+    expenses.value = expenses.value.filter((e) => e.id !== expenseId)
   }
 }
 
-onMounted(loadData)
-
-onMounted(async () => {
-  const userId = authStore.user?.id
-  if (!userId) return
-
-  try {
-    const data = await getExpensesByCategory(userId, 5, 2025)
-    expensesByCategory.value = data
-  } catch (error) {
-    console.error('Erro ao carregar despesas por categoria:', error)
-  }
-})
+watch(
+  () => authStore.user,
+  async (user) => {
+    if (user) {
+      try {
+        await loadData()
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error)
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
